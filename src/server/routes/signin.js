@@ -22,11 +22,26 @@ export default async (req, res, options, done) => {
     return done()
   }
 
+  const _baseUrl = function(){
+    if(process.env.MULTITENANT == "true"){
+      let protocol = 'http'
+      if( (req.headers.referer && req.headers.referer.split("://")[0] == 'https') || (req.headers['X-Forwarded-Proto'] && req.headers['X-Forwarded-Proto'] === 'https')){
+        protocol = 'https'
+      }
+      return protocol + "://" + req.headers.host + `${basePath}`
+    } else {
+      return `${baseUrl}${basePath}`
+    }
+  }
+
+  // Adding to handle multi tenant solutions where the base url changes
+
+
   if (type === 'oauth' && req.method === 'POST') {
     oAuthSignin(provider, csrfToken, (error, oAuthSigninUrl) => {
       if (error) {
         logger.error('SIGNIN_OAUTH_ERROR', error)
-        return redirect(`${baseUrl}${basePath}/error?error=OAuthSignin`)
+        return redirect(_baseUrl() + `/error?error=OAuthSignin`)
       }
 
       return redirect(oAuthSigninUrl)
@@ -34,7 +49,7 @@ export default async (req, res, options, done) => {
   } else if (type === 'email' && req.method === 'POST') {
     if (!adapter) {
       logger.error('EMAIL_REQUIRES_ADAPTER_ERROR')
-      return redirect(`${baseUrl}${basePath}/error?error=Configuration`)
+      return redirect(_baseUrl() + `/error?error=Configuration`)
     }
     const { getUserByEmail } = await adapter.getAdapter(options)
 
@@ -53,11 +68,11 @@ export default async (req, res, options, done) => {
     try {
       const signinCallbackResponse = await callbacks.signIn(profile, account, { email, verificationRequest: true })
       if (signinCallbackResponse === false) {
-        return redirect(`${baseUrl}${basePath}/error?error=AccessDenied`)
+        return redirect(_baseUrl() + `/error?error=AccessDenied`)
       }
     } catch (error) {
       if (error instanceof Error) {
-        return redirect(`${baseUrl}${basePath}/error?error=${encodeURIComponent(error)}`)
+        return redirect(_baseUrl() + `/error?error=${encodeURIComponent(error)}`)
       } else {
         return redirect(error)
       }
@@ -67,13 +82,12 @@ export default async (req, res, options, done) => {
       await emailSignin(email, provider, options)
     } catch (error) {
       logger.error('SIGNIN_EMAIL_ERROR', error)
-      return redirect(`${baseUrl}${basePath}/error?error=EmailSignin`)
+      return redirect(_baseUrl() + `/error?error=EmailSignin`)
     }
-
-    return redirect(`${baseUrl}${basePath}/verify-request?provider=${encodeURIComponent(
+    return redirect(_baseUrl() + `/verify-request?provider=${encodeURIComponent(
       provider.id
     )}&type=${encodeURIComponent(provider.type)}`)
   } else {
-    return redirect(`${baseUrl}${basePath}/signin`)
+    return redirect(_baseUrl() + `_baseUrl() + /signin`)
   }
 }

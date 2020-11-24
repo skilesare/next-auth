@@ -45,7 +45,16 @@ export default async (req, res, userSuppliedOptions) => {
     } = body
 
     // @todo refactor all existing references to site, baseUrl and basePath
-    const parsedUrl = parseUrl(process.env.NEXTAUTH_URL || process.env.VERCEL_URL)
+    let multiTenantURL = null
+    if(process.env.MULTITENANT == "true"){
+      let protocol = 'http'
+      if( (req.headers.referer && req.headers.referer.split("://")[0] == 'https') || (req.headers['X-Forwarded-Proto'] && req.headers['X-Forwarded-Proto'] === 'https')){
+        protocol = 'https'
+      }
+
+      multiTenantURL = protocol + "://" + req.headers.host
+    }
+    const parsedUrl = parseUrl(multiTenantURL || process.env.NEXTAUTH_URL || process.env.VERCEL_URL)
     const baseUrl = parsedUrl.baseUrl
     const basePath = parsedUrl.basePath
 

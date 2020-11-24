@@ -39,7 +39,7 @@ export default async (req, res, options, done) => {
 
       // Pass Session and JSON Web Token through to the session callback
       const jwtPayload = await callbacks.jwt(decodedJwt)
-      const sessionPayload = await callbacks.session(defaultSessionPayload, jwtPayload)
+      const sessionPayload = await callbacks.session(defaultSessionPayload, jwtPayload, req)
 
       // Return session payload as response
       response = sessionPayload
@@ -79,7 +79,7 @@ export default async (req, res, options, done) => {
         }
 
         // Pass Session through to the session callback
-        const sessionPayload = await callbacks.session(defaultSessionPayload, user)
+        const sessionPayload = await callbacks.session(defaultSessionPayload, user, req)
 
         // Return session payload as response
         response = sessionPayload

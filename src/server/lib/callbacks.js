@@ -47,7 +47,7 @@ const redirect = async (url, baseUrl) => {
  * @param  {object} token    JSON Web Token (if enabled)
  * @return {object}          Session that will be returned to the client
  */
-const session = async (session, token) => {
+const session = async (session, token, req) => {
   return Promise.resolve(session)
 }
 

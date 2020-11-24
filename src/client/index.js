@@ -21,9 +21,11 @@ import parseUrl from '../lib/parse-url'
 //    relative URLs are valid in that context and so defaults to empty.
 // 2. When invoked server side the value is picked up from an environment
 //    variable and defaults to 'http://localhost:3000'.
+const multiTenant = process.env.MULTITENANT === "true"
 const __NEXTAUTH = {
   baseUrl: parseUrl(process.env.NEXTAUTH_URL || process.env.VERCEL_URL).baseUrl,
   basePath: parseUrl(process.env.NEXTAUTH_URL).basePath,
+  multiTenant: multiTenant,
   keepAlive: 0, // 0 == disabled (don't send); 60 == send every 60 seconds
   clientMaxAge: 0, // 0 == disabled (only use cache); 60 == sync if last checked > 60 seconds ago
   // Properties starting with _ are used for tracking internal app state
@@ -80,11 +82,13 @@ const setOptions = ({
   baseUrl,
   basePath,
   clientMaxAge,
-  keepAlive
+  keepAlive,
+  multiTenant
 } = {}) => {
   if (baseUrl) { __NEXTAUTH.baseUrl = baseUrl }
   if (basePath) { __NEXTAUTH.basePath = basePath }
   if (clientMaxAge) { __NEXTAUTH.clientMaxAge = clientMaxAge }
+  if (multiTenant) { __NEXTAUTH.multiTenant = multiTenant}
   if (keepAlive) {
     __NEXTAUTH.keepAlive = keepAlive
 
@@ -110,7 +114,7 @@ const getSession = async ({ req, ctx, triggerEvent = true } = {}) => {
   // work seemlessly in getInitialProps() on server side pages *and* in _app.js.
   if (!req && ctx && ctx.req) { req = ctx.req }
 
-  const baseUrl = _apiBaseUrl()
+  const baseUrl = _apiBaseUrl(req)
   const fetchOptions = req ? { headers: { cookie: req.headers.cookie } } : {}
   const session = await _fetchData(`${baseUrl}/session`, fetchOptions)
   if (triggerEvent) {
@@ -126,15 +130,15 @@ const getCsrfToken = async ({ req, ctx } = {}) => {
   // work seemlessly in getInitialProps() on server side pages *and* in _app.js.
   if (!req && ctx && ctx.req) { req = ctx.req }
 
-  const baseUrl = _apiBaseUrl()
+  const baseUrl = _apiBaseUrl(req)
   const fetchOptions = req ? { headers: { cookie: req.headers.cookie } } : {}
   const data = await _fetchData(`${baseUrl}/csrf`, fetchOptions)
   return data && data.csrfToken ? data.csrfToken : null
 }
 
-// Universal method (client + server); does not require request headers
-const getProviders = async () => {
-  const baseUrl = _apiBaseUrl()
+// Universal method (client + server); does not require request headers but seems to only be called by client
+const getProviders = async (req) => {
+  const baseUrl = _apiBaseUrl(req)
   return _fetchData(`${baseUrl}/providers`)
 }
 
@@ -294,13 +298,23 @@ const _fetchData = async (url, options = {}) => {
   }
 }
 
-const _apiBaseUrl = () => {
+const _apiBaseUrl = (req) => {
   if (typeof window === 'undefined') {
     // NEXTAUTH_URL should always be set explicitly to support server side calls - log warning if not set
-    if (!process.env.NEXTAUTH_URL) { logger.warn('NEXTAUTH_URL', 'NEXTAUTH_URL environment variable not set') }
+    if (!__NEXTAUTH.multiTenant && !process.env.NEXTAUTH_URL) { logger.warn('NEXTAUTH_URL', 'NEXTAUTH_URL environment variable not set') }
 
     // Return absolute path when called server side
-    return `${__NEXTAUTH.baseUrl}${__NEXTAUTH.basePath}`
+    if(req && __NEXTAUTH.multiTenant){
+      let protocol = 'http'
+      if( (req.headers.referer && req.headers.referer.split("://")[0] == 'https') || (req.headers['X-Forwarded-Proto'] && req.headers['X-Forwarded-Proto'] === 'https')){
+        protocol = 'https'
+      }
+      return protocol + "://" +`${req.headers.host}${__NEXTAUTH.basePath}`
+    } else if(__NEXTAUTH.multiTenant){
+      logger.warn('found an instance of multitenant without a req')
+    } else {
+      return `${__NEXTAUTH.baseUrl}${__NEXTAUTH.basePath}`
+    }
   } else {
     // Return relative path when called client side
     return __NEXTAUTH.basePath
