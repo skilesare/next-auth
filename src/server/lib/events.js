@@ -6,7 +6,7 @@ const signOut = async (message) => {
   // Event triggered on sign out
 }
 
-const createUser = async (message) => {
+const createUser = async (message, req) => {
   // Event triggered on user creation
 }
 

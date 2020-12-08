@@ -11,7 +11,7 @@
 import { AccountNotLinkedError } from '../../lib/errors'
 import dispatchEvent from '../lib/dispatch-event'
 
-export default async (sessionToken, profile, providerAccount, options) => {
+export default async (sessionToken, profile, providerAccount, options, req) => {
   try {
     // Input validation
     if (!profile) { throw new Error('Missing profile') }
@@ -91,7 +91,7 @@ export default async (sessionToken, profile, providerAccount, options) => {
         // Create user account if there isn't one for the email address already
         const currentDate = new Date()
         user = await createUser({ ...profile, emailVerified: currentDate })
-        await dispatchEvent(events.createUser, user)
+        await dispatchEvent(events.createUser, user, req)
         isNewUser = true
       }
 

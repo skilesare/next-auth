@@ -1,8 +1,8 @@
 import logger from '../../lib/logger'
 
-export default async (event, message) => {
+export default async (event, message, opts) => {
   try {
-    await event(message)
+    await event(message, opts)
   } catch (e) {
     logger.error('EVENT_ERROR', e)
   }
